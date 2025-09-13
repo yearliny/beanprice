@@ -50,42 +50,45 @@ bean-price --update ledger.beancount
 
 For more detailed guide for price fetching, read <https://beancount.github.io/docs/fetching_prices_in_beancount.html>.
 
-
 ## Price source info
+
 The following price sources are available:
 
-| Name                    | Module                    | Provides prices for                                                               | Base currency                                                                    | Latest price? | Historical price? |
-|-------------------------|---------------------------|-----------------------------------------------------------------------------------|----------------------------------------------------------------------------------|---------------|-------------------|
-| Alphavantage            | `beanprice.alphavantage`  | [Stocks, FX, Crypto](http://alphavantage.co)                                      | Many currencies                                                                  | ✓             | ✕                 |
-| Coinbase                | `beanprice.coinbase`      | [Most common (crypto)currencies](https://api.coinbase.com/v2/exchange-rates)      | [Many currencies](https://api.coinbase.com/v2/currencies)                        | ✓             | ✓                 |
-| Coincap                 | `beanprice.coincap`       | [Most common (crypto)currencies](https://docs.coincap.io)                         | USD                                                                              | ✓             | ✓                 |
-| Coinmarketcap           | `beanprice.coinmarketcap` | [Most common (crypto)currencies](https://coinmarketcap.com/api/documentation/v1/) | Many Currencies                                                                  | ✓             | ✕                 |
-| European Central Bank API| `beanprice.ecbrates`      | [Many currencies](https://data.ecb.europa.eu/search-results?searchTerm=exchange%20rates)                     | [Many currencies](https://data.ecb.europa.eu/search-results?searchTerm=exchange%20rates) (Derived from EUR rates)| ✓             | ✓                |
-| IEX                     | `beanprice.iex`           | [Trading symbols](https://iextrading.com/trading/eligible-symbols/)               | USD                                                                              | ✓             | 🚧 (Not yet!)     |
-| OANDA                   | `beanprice.oanda`         | [Many currencies](https://developer.oanda.com/exchange-rates-api/v1/currencies/)  | [Many currencies](https://developer.oanda.com/exchange-rates-api/v1/currencies/) | ✓             | ✓                 |
-| Quandl                  | `beanprice.quandl`        | [Various datasets](https://www.quandl.com/search)                                 | [Various datasets](https://www.quandl.com/search)                                | ✓             | ✓                 |
-| Rates API               | `beanprice.ratesapi`      | [Many currencies](https://api.exchangerate.host/symbols)                          | [Many currencies](https://api.exchangerate.host/symbols)                         | ✓             | ✓                 |
-| Thrift Savings Plan     | `beanprice.tsp`           | TSP Funds                                                                         | USD                                                                              | ✓             | ✓                 |
-| Yahoo                   | `beanprice.yahoo`         | Many currencies                                                                   | Many currencies                                                                  | ✓             | ✓                 |
-| EastMoneyFund(天天基金) | `beanprice.eastmoneyfund` | [Chinese Funds](http://fund.eastmoney.com/js/fundcode_search.js)                  | CNY                                                                              | ✓             | ✓                 |
-
+| Name                      | Module                     | Provides prices for                                                                      | Base currency                                                                                                     | Latest price? | Historical price? |
+|---------------------------|----------------------------|------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|---------------|-------------------|
+| Alphavantage              | `beanprice.alphavantage`   | [Stocks, FX, Crypto](http://alphavantage.co)                                             | Many currencies                                                                                                   | ✓             | ✕                 |
+| Coinbase                  | `beanprice.coinbase`       | [Most common (crypto)currencies](https://api.coinbase.com/v2/exchange-rates)             | [Many currencies](https://api.coinbase.com/v2/currencies)                                                         | ✓             | ✓                 |
+| Coincap                   | `beanprice.coincap`        | [Most common (crypto)currencies](https://docs.coincap.io)                                | USD                                                                                                               | ✓             | ✓                 |
+| Coinmarketcap             | `beanprice.coinmarketcap`  | [Most common (crypto)currencies](https://coinmarketcap.com/api/documentation/v1/)        | Many Currencies                                                                                                   | ✓             | ✕                 |
+| European Central Bank API | `beanprice.ecbrates`       | [Many currencies](https://data.ecb.europa.eu/search-results?searchTerm=exchange%20rates) | [Many currencies](https://data.ecb.europa.eu/search-results?searchTerm=exchange%20rates) (Derived from EUR rates) | ✓             | ✓                 |
+| IEX                       | `beanprice.iex`            | [Trading symbols](https://iextrading.com/trading/eligible-symbols/)                      | USD                                                                                                               | ✓             | 🚧 (Not yet!)     |
+| OANDA                     | `beanprice.oanda`          | [Many currencies](https://developer.oanda.com/exchange-rates-api/v1/currencies/)         | [Many currencies](https://developer.oanda.com/exchange-rates-api/v1/currencies/)                                  | ✓             | ✓                 |
+| Quandl                    | `beanprice.quandl`         | [Various datasets](https://www.quandl.com/search)                                        | [Various datasets](https://www.quandl.com/search)                                                                 | ✓             | ✓                 |
+| Rates API                 | `beanprice.ratesapi`       | [Many currencies](https://api.exchangerate.host/symbols)                                 | [Many currencies](https://api.exchangerate.host/symbols)                                                          | ✓             | ✓                 |
+| Thrift Savings Plan       | `beanprice.tsp`            | TSP Funds                                                                                | USD                                                                                                               | ✓             | ✓                 |
+| Yahoo                     | `beanprice.yahoo`          | Many currencies                                                                          | Many currencies                                                                                                   | ✓             | ✓                 |
+| EastMoneyFund(天天基金)       | `beanprice.eastmoneyfund`  | [Chinese Funds](http://fund.eastmoney.com/js/fundcode_search.js)                         | CNY                                                                                                               | ✓             | ✓                 |
+| EastMoney(东方财富)           | `beanprice.eastmoneyquota` | [Chinese A-shares, Hong Kong stocks](https://quote.eastmoney.com/)                       | CNY                                                                                                               | ✓             | ✓                 |
 
 More price sources can be found at [awesome-beancount.com](https://awesome-beancount.com/#price-sources) website.
 
 ## Creating a custom price source
 
-To create a price source, create a package (i.e. `my_package`) with a module (i.e. `my_module`) that contains the Source class which inherits from the `beanprice.Source` class:
+To create a price source, create a package (i.e. `my_package`) with a module (i.e. `my_module`) that contains the Source
+class which inherits from the `beanprice.Source` class:
 
 ```python
 from beanprice import source
 
+
 class Source(source.Source):
-  def get_latest_price(self, ticker) -> source.SourcePrice | None:
-    pass
-  
-  def get_historical_price(self, ticker, time):
-    pass
+    def get_latest_price(self, ticker) -> source.SourcePrice | None:
+        pass
+
+    def get_historical_price(self, ticker, time):
+        pass
 ```
+
 Implement the logic for fetching the prices. At a minimum, the `get_latest_price()` is required.
 
 Then use your price source in the commodities
@@ -94,6 +97,7 @@ Then use your price source in the commodities
 1900-01-01 commodity XYZ
   price: "AUD:my_package.my_module/XYZ"
 ```
+
 `AUD` just being an example of a currency specification.
 
 ## Testing
@@ -118,7 +122,7 @@ mypy beanprice
 
 ## Copyright and License
 
-Copyright (C) 2007-2020  Martin Blais.  All Rights Reserved.
+Copyright (C) 2007-2020 Martin Blais. All Rights Reserved.
 
 This code is distributed under the terms of the "GNU GPLv2 only".
 See COPYING file for details.
