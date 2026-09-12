@@ -30,6 +30,14 @@ def response(contents, status_code=requests.codes.ok):
     response = mock.Mock()
     response.status_code = status_code
     response.text = contents
+    if contents == CONTENTS:
+        rows = eastmoneyfund.parse_page(contents)
+        response.json.return_value = {"ErrCode": 0, "TotalCount": len(rows), "Data": {
+            "LSJZList": [{"FSRQ": day.date().isoformat(), "DWJZ": str(value),
+                          "NAVTYPE": "1", "ACTUALSYI": ""} for day, value in rows]}}
+    else:
+        response.json.return_value = {"ErrCode": 0, "TotalCount": 1, "Data": {
+            "LSJZList": [{"NAVTYPE": "2", "ACTUALSYI": "1.5730"}]}}
     return mock.patch("requests.get", return_value=response)
 
 
