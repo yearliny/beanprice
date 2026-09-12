@@ -66,9 +66,13 @@ The CLI exits nonzero on failure; do not pipe its output into the ledger.
 Run the focused offline regression suite on Windows or Linux:
 
 ```powershell
-python -m pytest beanprice/sync_test.py beanprice/sources/valuation_test.py beanprice/sources/eastmoneystock_test.py beanprice/sources/eastmoneyfund_test.py beanprice/sources/ecbrates_test.py
+python -m pytest beanprice/sync_test.py beanprice/sources/valuation_test.py beanprice/sources/eastmoneystock_test.py beanprice/sources/eastmoneyfund_test.py beanprice/sources/ecbrates_test.py beanprice/sources/tencent_test.py
 ```
 
 Full upstream tests currently also exercise legacy Unix timezone and Yahoo
 network mocking assumptions; passing this focused suite does not certify every
 unrelated provider. Live checks should be deliberate, read-only smoke tests.
+
+Tencent (`tencent/02020`) is an explicit alternative for native unadjusted
+stock/ETF closing prices, for example `HKD:eastmoneystock/02020,tencent/02020`.
+Actual successful source names are recorded on every saved quote.

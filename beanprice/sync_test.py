@@ -144,3 +144,23 @@ def test_fx_cannot_postdate_native_quote(ledger):
 
     with pytest.raises(sync.SyncError, match="outside"):
         sync.sync(main, prices, [ASOF], fetch=future_fx)
+
+def test_configured_fallback_after_primary_network_failure():
+    from types import SimpleNamespace
+    from unittest.mock import Mock, patch
+    from beanprice.price import PriceSource
+
+    primary = Mock()
+    primary.get_historical_price.side_effect = TimeoutError("offline")
+    secondary = Mock()
+    secondary.get_historical_price.return_value = source.SourcePrice(
+        Decimal("72.45"), datetime(2024, 1, 5, tzinfo=timezone.utc), "HKD")
+    sources = [PriceSource(SimpleNamespace(__name__="primary", Source=lambda: primary),
+                           "02020", False),
+               PriceSource(SimpleNamespace(__name__="secondary", Source=lambda: secondary),
+                           "02020", False)]
+    with patch.object(sync, "parse_source_map", return_value={"HKD": sources}):
+        quote, observed, provenance = sync.fetch_quote("ignored", ASOF, 7)
+    assert quote.price == Decimal("72.45")
+    assert provenance == "secondary/02020"
+    assert observed == ASOF
