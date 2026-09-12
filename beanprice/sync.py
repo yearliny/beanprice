@@ -20,6 +20,7 @@ from beancount.core import amount, data
 from beancount.ops import validation
 from beancount.parser import parser, printer
 from beanprice.price import parse_source_map
+from beanprice.source import Source
 
 LOCAL_TIMEZONE = timezone(timedelta(hours=8))
 
@@ -73,8 +74,21 @@ def fetch_quote(spec, asof, max_age):
         try:
             if item.invert:
                 raise SyncError("Use an explicit BASE-QUOTE FX source, not inversion")
-            quote = item.module.Source().get_historical_price(
-                item.symbol, datetime.combine(asof, time(23, 59), LOCAL_TIMEZONE))
+            provider = item.module.Source()
+            end_time = datetime.combine(asof, time(23, 59), LOCAL_TIMEZONE)
+            # A relaxed age limit must also expand providers' usual ten-day window.
+            if max_age > 10 and type(provider).get_prices_series is not Source.get_prices_series:
+                series = provider.get_prices_series(
+                    item.symbol, end_time - timedelta(days=max_age), end_time)
+                candidates = []
+                for value in series or []:
+                    observed = check_quote(value, currency, asof, max_age)
+                    candidates.append((observed, value))
+                if not candidates:
+                    raise SyncError("No price in the extended date range")
+                quote = max(candidates, key=lambda value: value[0])[1]
+            else:
+                quote = provider.get_historical_price(item.symbol, end_time)
             observed = check_quote(quote, currency, asof, max_age)
             return quote, observed, name
         except Exception as exc:
@@ -240,6 +254,8 @@ def main(argv=None):
         dates = [today - timedelta(days=1)]
     if args.max_age < 0 or any(day >= today for day in dates):
         args_parser.error("Use completed dates before today and a nonnegative max-age")
+    print(f"Fetching complete holdings for {len(set(dates))} date(s)...",
+          file=sys.stderr, flush=True)
     try:
         additions = sync(args.ledger, args.output, dates, args.currency,
                          args.max_age, args.dry_run)

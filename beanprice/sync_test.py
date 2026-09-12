@@ -164,3 +164,21 @@ def test_configured_fallback_after_primary_network_failure():
     assert quote.price == Decimal("72.45")
     assert provenance == "secondary/02020"
     assert observed == ASOF
+
+def test_extended_age_limit_expands_series_request():
+    from types import SimpleNamespace
+    from unittest.mock import patch
+    from beanprice.price import PriceSource
+
+    class HolidaySource(source.Source):
+        def get_prices_series(self, symbol, begin, end):
+            assert (end - begin).days == 30
+            return [source.SourcePrice(Decimal("10"),
+                    datetime(2023, 12, 15, tzinfo=timezone.utc), "CNY")]
+
+    module = SimpleNamespace(__name__="holiday", Source=HolidaySource)
+    with patch.object(sync, "parse_source_map",
+                      return_value={"CNY": [PriceSource(module, "TEST", False)]}):
+        quote, observed, _ = sync.fetch_quote("ignored", ASOF, 30)
+    assert observed == date(2023, 12, 15)
+    assert quote.price == Decimal("10")
