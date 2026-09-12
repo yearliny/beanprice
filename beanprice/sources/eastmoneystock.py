@@ -15,7 +15,7 @@ Timezone information: the API returns GMT+8 data,
 """
 
 import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 import requests
 
@@ -51,16 +51,16 @@ def _get_market_and_currency(ticker):
         A tuple of (market_code, currency).
     """
     if ticker.isdigit() and len(ticker) == 6:
-        if ticker.startswith(("0", "1", "2", "3")):
+        if ticker.startswith(("0", "1", "3")):
             return _MARKET_CODES["SZ"], "CNY"
         if ticker.startswith(("5", "6")):
             return _MARKET_CODES["SH"], "CNY"
-    if ticker.isdigit() and len(ticker) == 5:
+    if ticker.isdigit() and len(ticker) == 5 and not ticker.startswith("8"):
         return _MARKET_CODES["HK"], "HKD"
     raise EastMoneyStockError(f"Unsupported ticker format: {ticker}")
 
 
-def _parse_kline_data(data):
+def _parse_kline_data(data, close_hour=15):
     """Parse kline data from API response.
 
     Returns:
@@ -76,19 +76,26 @@ def _parse_kline_data(data):
     for kline in klines:
         parts = kline.split(",")
         if len(parts) < 2:
-            continue
+            raise EastMoneyStockError("Malformed closing price row")
         try:
             date = datetime.datetime.strptime(
                 parts[0], "%Y-%m-%d"
-            ).replace(hour=15, tzinfo=TIMEZONE)
+            ).replace(hour=close_hour, tzinfo=TIMEZONE)
             price = Decimal(parts[1])
+            if not price.is_finite() or price <= 0:
+                raise EastMoneyStockError("Non-positive or non-finite closing price")
             result.append((date, price))
-        except (ValueError, IndexError):
-            continue
+        except (InvalidOperation, IndexError) as exc:
+            raise EastMoneyStockError("Invalid closing price") from exc
 
     if not result:
         return None
-    return sorted(result, key=lambda x: x[0])
+    by_date = {}
+    for date, price in result:
+        if date in by_date and by_date[date] != price:
+            raise EastMoneyStockError(f"Conflicting prices for {date.date()}")
+        by_date[date] = price
+    return sorted(by_date.items())
 
 
 def get_price_series(ticker, time_begin, time_end):
@@ -105,7 +112,11 @@ def get_price_series(ticker, time_begin, time_end):
 
     market_code, _ = _get_market_and_currency(ticker)
     secid = f"{market_code}.{ticker}"
-    days = (time_end - time_begin).days + 1
+    begin_date = time_begin.astimezone(TIMEZONE).date()
+    end_date = time_end.astimezone(TIMEZONE).date()
+    if begin_date > end_date:
+        raise EastMoneyStockError("Start date is after end date")
+    days = (end_date - begin_date).days + 1
 
     params = {
         "secid": secid,
@@ -127,8 +138,16 @@ def get_price_series(ticker, time_begin, time_end):
         )
 
     data = response.json()
-    prices = _parse_kline_data(data)
-    if prices is None:
+    if not isinstance(data, dict) or data.get("rc", 0) != 0:
+        raise EastMoneyStockError(f"API error for {ticker}")
+    payload = data.get("data") or {}
+    if payload.get("code", ticker) != ticker:
+        raise EastMoneyStockError(f"Wrong security returned for {ticker}")
+    prices = _parse_kline_data(data, 16 if market_code == "116" else 15)
+    if prices:
+        prices = [(date, value) for date, value in prices
+                  if begin_date <= date.date() <= end_date]
+    if not prices:
         raise EastMoneyStockError(
             f"No price data for {ticker} between"
             f" {time_begin.date()} and {time_end.date()}"

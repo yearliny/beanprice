@@ -18,7 +18,7 @@ Timezone information: the http API requests GMT+8,
 
 import datetime
 import re
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 import requests
 from beanprice import source
 
@@ -55,7 +55,7 @@ def parse_page(page):
         "<th>申购状态</th><th>赎回状态</th>.*?分红送配</th>"
     )
     table = tr_re.findall(page)
-    if not header_match.match(table[0]):
+    if not table or not header_match.match(table[0]):
         raise UnsupportTickerError
     try:
         table = [
@@ -65,8 +65,10 @@ def parse_page(page):
             )
             for t in [item_re.match(x).groups() for x in table[1:]]
         ]
-    except AttributeError:
-        return None
+    except (AttributeError, ValueError, InvalidOperation) as exc:
+        raise EastMoneyFundError("Malformed fund price row") from exc
+    if any(not value.is_finite() or value <= 0 for _, value in table):
+        raise EastMoneyFundError("Non-positive or non-finite fund NAV")
     return table
 
 
@@ -74,7 +76,11 @@ def get_price_series(
     ticker: str, time_begin: datetime.datetime, time_end: datetime.datetime
 ):
     base_url = "https://fundf10.eastmoney.com/F10DataApi.aspx"
-    time_delta_day = (time_end - time_begin).days + 1
+    begin_date = time_begin.astimezone(TIMEZONE).date()
+    end_date = time_end.astimezone(TIMEZONE).date()
+    if begin_date > end_date:
+        raise EastMoneyFundError("Start date is after end date")
+    time_delta_day = (end_date - begin_date).days + 1
     pages = time_delta_day // 30 + 1
     res = []
     for page in range(1, pages + 1):
@@ -86,7 +92,7 @@ def get_price_series(
             "type": "lsjz",
             "per": str(30),
         }
-        response = requests.get(base_url, params=query, headers=headers)
+        response = requests.get(base_url, params=query, headers=headers, timeout=30)
         if response.status_code != requests.codes.ok:
             raise EastMoneyFundError(
                 f"Invalid response ({response.status_code}): {response.text}"
@@ -101,7 +107,15 @@ def get_price_series(
         if price is None:
             break
         res.extend(price)
-    return res
+    by_date = {}
+    for date, value in res:
+        if begin_date <= date.date() <= end_date:
+            if date in by_date and by_date[date] != value:
+                raise EastMoneyFundError(f"Conflicting NAV for {date.date()}")
+            by_date[date] = value
+    if not by_date:
+        raise EastMoneyFundError(f"No NAV within requested dates for {ticker}")
+    return sorted(by_date.items(), reverse=True)
 
 
 class Source(source.Source):

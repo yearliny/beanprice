@@ -50,7 +50,8 @@ class EastMoneyFundFetcher(unittest.TestCase):
             self.assertEqual(eastmoneyfund.UnsupportTickerError, exc.exception)
 
     def test_latest_price(self):
-        with response(CONTENTS):
+        rows = eastmoneyfund.parse_page(CONTENTS)
+        with mock.patch.object(eastmoneyfund, "get_price_series", return_value=rows):
             srcprice = eastmoneyfund.Source().get_latest_price("377240")
             self.assertIsInstance(srcprice, source.SourcePrice)
             self.assertEqual(Decimal("5.1890"), srcprice.price)
@@ -58,7 +59,7 @@ class EastMoneyFundFetcher(unittest.TestCase):
 
     def test_historical_price(self):
         with response(CONTENTS):
-            time = datetime.datetime(2018, 3, 27, 0, 0, 0, tzinfo=tz.tzutc())
+            time = datetime.datetime(2020, 10, 9, 0, 0, 0, tzinfo=tz.tzutc())
             srcprice = eastmoneyfund.Source().get_historical_price("377240", time)
             self.assertIsInstance(srcprice, source.SourcePrice)
             self.assertEqual(Decimal("5.1890"), srcprice.price)
@@ -70,9 +71,9 @@ class EastMoneyFundFetcher(unittest.TestCase):
 
     def test_get_prices_series(self):
         with response(CONTENTS):
-            time = datetime.datetime(2018, 3, 27, 0, 0, 0, tzinfo=tz.tzutc())
+            time = datetime.datetime(2020, 10, 9, 0, 0, 0, tzinfo=tz.tzutc())
             srcprice = eastmoneyfund.Source().get_prices_series(
-                "377240", time - datetime.timedelta(days=10), time
+                "377240", time - datetime.timedelta(days=30), time
             )
             self.assertIsInstance(srcprice, list)
             self.assertIsInstance(srcprice[-1], source.SourcePrice)

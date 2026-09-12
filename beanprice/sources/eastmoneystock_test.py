@@ -107,7 +107,8 @@ class TestEastMoneyStock(unittest.TestCase):
                 )
 
     def test_get_latest_price(self):
-        with mock_response(KLINE_RESPONSE):
+        rows = eastmoneystock._parse_kline_data(KLINE_RESPONSE)
+        with mock.patch.object(eastmoneystock, "get_price_series", return_value=rows):
             srcprice = eastmoneystock.Source().get_latest_price("600519")
             self.assertIsInstance(srcprice, source.SourcePrice)
             self.assertEqual(Decimal("1678.01"), srcprice.price)
@@ -129,8 +130,8 @@ class TestEastMoneyStock(unittest.TestCase):
                 "600519", time
             )
             self.assertIsInstance(srcprice, source.SourcePrice)
-            # Returns last price in the fetched range
-            self.assertEqual(Decimal("1678.01"), srcprice.price)
+            # Must not use January 8 for a January 5 valuation.
+            self.assertEqual(Decimal("1694.00"), srcprice.price)
             self.assertEqual("CNY", srcprice.quote_currency)
 
     def test_get_prices_series(self):
