@@ -69,9 +69,11 @@ Run the focused offline regression suite on Windows or Linux:
 python -m pytest beanprice/sync_test.py beanprice/sources/valuation_test.py beanprice/sources/eastmoneystock_test.py beanprice/sources/eastmoneyfund_test.py beanprice/sources/ecbrates_test.py beanprice/sources/tencent_test.py
 ```
 
-Full upstream tests currently also exercise legacy Unix timezone and Yahoo
-network mocking assumptions; passing this focused suite does not certify every
-unrelated provider. Live checks should be deliberate, read-only smoke tests.
+The complete offline suite can be run with `python -m pytest beanprice`.
+On Windows, the nine tests requiring POSIX process timezone switching are
+explicitly skipped; provider tests that do not require switching still run.
+Linux CI also exercises those POSIX tests. Live checks remain deliberate,
+read-only smoke tests; unit tests do not depend on Yahoo authentication/network.
 
 Tencent (`tencent/02020`) is an explicit alternative for native unadjusted
 stock/ETF closing prices, for example `HKD:eastmoneystock/02020,tencent/02020`.

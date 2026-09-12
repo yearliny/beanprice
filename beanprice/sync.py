@@ -156,6 +156,7 @@ def merge_prices(original, proposed):
         return original, []
     text = original.rstrip() + "\n\n; Validated end-of-day price sync\n"
     text += "\n".join(printer.format_entry(entry) for entry in additions) + "\n"
+    text = text.rstrip() + "\n"
     _, errors, _ = parser.parse_string(text)
     if errors:
         raise SyncError(f"Generated price syntax invalid: {errors}")
