@@ -103,6 +103,8 @@ def get_price_series(ticker, time_begin, time_end):
             total = int(payload["TotalCount"])
         except (KeyError, TypeError, ValueError) as exc:
             raise EastMoneyFundError("Malformed fund API response") from exc
+        if payload.get("PageIndex", page) != page:
+            raise EastMoneyFundError("Fund API returned the wrong page")
         if not isinstance(rows, list) or total < 0:
             raise EastMoneyFundError("Invalid fund pagination")
         if not rows:

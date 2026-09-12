@@ -100,5 +100,48 @@ class EastMoneyFundFetcher(unittest.TestCase):
             )
 
 
+
+class FundPaginationRegression(unittest.TestCase):
+    @staticmethod
+    def page(index, rows, total=2):
+        value = mock.Mock(status_code=200)
+        value.json.return_value = {"ErrCode": 0, "PageIndex": index,
+                                  "TotalCount": total, "Data": {"LSJZList": rows}}
+        return value
+
+    @staticmethod
+    def row(day, value="1.2"):
+        return {"FSRQ": day, "DWJZ": value, "NAVTYPE": "1", "ACTUALSYI": ""}
+
+    def fetch(self):
+        return eastmoneyfund.get_price_series(
+            "022947", datetime.datetime(2026, 9, 1, tzinfo=eastmoneyfund.TIMEZONE),
+            datetime.datetime(2026, 9, 11, tzinfo=eastmoneyfund.TIMEZONE))
+
+    def test_all_pages_fetched(self):
+        pages = [self.page(1, [self.row("2026-09-11")]),
+                 self.page(2, [self.row("2026-09-10")])]
+        with mock.patch("requests.get", side_effect=pages) as get:
+            result = self.fetch()
+        self.assertEqual(2, len(result))
+        self.assertEqual([1, 2], [call.kwargs["params"]["pageIndex"]
+                                  for call in get.call_args_list])
+
+    def test_repeated_page_is_rejected(self):
+        page = self.page(1, [self.row("2026-09-11")])
+        with mock.patch("requests.get", return_value=page), self.assertRaises(ValueError):
+            self.fetch()
+
+    def test_truncated_pagination_is_rejected(self):
+        pages = [self.page(1, [self.row("2026-09-11")]), self.page(2, [])]
+        with mock.patch("requests.get", side_effect=pages), self.assertRaises(ValueError):
+            self.fetch()
+
+    def test_nonfinite_nav_is_rejected(self):
+        page = self.page(1, [self.row("2026-09-11", "NaN")], total=1)
+        with mock.patch("requests.get", return_value=page), self.assertRaises(ValueError):
+            self.fetch()
+
+
 if __name__ == "__main__":
     unittest.main()
